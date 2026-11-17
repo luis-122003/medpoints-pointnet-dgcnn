@@ -9,7 +9,7 @@ licencia MIT; 28.737 nubes de 2.048 puntos (x, y, z) en float32, derivadas de Me
 
 - **Modelos:** PointNet (3,48 M de parámetros, 2.048 puntos por nube) y DGCNN (1,81 M, 1.024 puntos, grafo de 20 vecinos).
 - **Partición:** estratificada 60/20/20 con semilla fija 2026 (17.249 / 5.744 / 5.744), guardada en `codigo/particion.npz`.
-- **Protocolo:** 60 épocas, Adam 1e-3 con decaimiento coseno, lote 32, entropía cruzada ponderada por clase, aumento sin
+- **Protocolo:** hasta 50 épocas con parada temprana (10 épocas sin mejorar en validación), Adam 1e-3 con decaimiento coseno, lote 32, entropía cruzada ponderada por clase, aumento sin
   rotaciones ni espejos (escala, traslación y ruido), selección por F1 macro en validación (en empate, menor entropía
   cruzada), tres semillas (0, 1 y 2) y una sola evaluación en prueba, con intervalos de confianza por bootstrap.
 
@@ -29,8 +29,8 @@ Los resultados del entrenamiento en Kaggle (GPU Tesla T4) se agregan en `resulta
 
 ```bash
 pip install pyarrow pandas torch scikit-learn matplotlib
-python codigo/medpoints_cls.py --modelo pointnet --puntos 2048 --epocas 60 --semillas 0 1 2
-python codigo/medpoints_cls.py --modelo dgcnn --puntos 1024 --epocas 60 --semillas 0 1 2
+python codigo/medpoints_cls.py --modelo pointnet --puntos 2048 --epocas 50 --paciencia 10 --semillas 0 1 2
+python codigo/medpoints_cls.py --modelo dgcnn --puntos 1024 --epocas 50 --paciencia 10 --semillas 0 1 2
 python codigo/medpoints_cls.py --modelo pointnet --epocas 1 --semillas 0 --max-muestras 600   # prueba rápida
 ```
 

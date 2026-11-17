@@ -2,8 +2,8 @@
 
 Uso:
     pip install pyarrow pandas torch scikit-learn matplotlib
-    python medpoints_cls.py --modelo pointnet --epocas 60 --semillas 0 1 2
-    python medpoints_cls.py --modelo dgcnn --puntos 1024 --epocas 60 --semillas 0 1 2
+    python medpoints_cls.py --modelo pointnet --epocas 50 --paciencia 10 --semillas 0 1 2
+    python medpoints_cls.py --modelo dgcnn --puntos 1024 --epocas 50 --paciencia 10 --semillas 0 1 2
     python medpoints_cls.py --modelo pointnet --epocas 1 --semillas 0 --max-muestras 600   # prueba rápida
 
 Datos: Hugging Face wlsdzyzl/MedPointS-cls (licencia MIT), 28.737 nubes de 2.048 puntos (x, y, z) en float32 y 46 clases.
@@ -259,9 +259,10 @@ def bootstrap(P, Y, B=2000, seed=0):
     return np.percentile(A, [2.5, 97.5]), np.percentile(Fm, [2.5, 97.5])
 
 
-def entrenar(nombre, X, y, part, puntos, epocas, lr, batch, seed, dev):
+def entrenar(nombre, X, y, part, puntos, epocas, lr, batch, seed, dev, paciencia=10):
     """Adam + coseno, entropía cruzada ponderada, precisión mixta en GPU. Selección: mejor F1 macro en validación
-    (empate: menor entropía cruzada); prueba una sola vez. Memoria pico medida desde la 2.ª época."""
+    (empate: menor entropía cruzada); parada temprana si no mejora en `paciencia` épocas; prueba una sola vez.
+    Memoria pico medida desde la 2.ª época."""
     torch.manual_seed(seed); np.random.seed(seed)
     torch.backends.cudnn.benchmark = True
     g = torch.Generator().manual_seed(seed)
@@ -298,12 +299,16 @@ def entrenar(nombre, X, y, part, puntos, epocas, lr, batch, seed, dev):
             estado = {k: v.detach().clone() for k, v in m.state_dict().items()}
         print(f"{nombre} seed {seed} ep {ep+1:3d} loss {suma/n:.3f} val loss {r['nll']:.3f} acc {r['acc']:.3f} F1 {r['f1_macro']:.3f} "
               f"({time.time()-t0:.0f} s)", flush=True)
-    s_ep = (time.time() - t0) / epocas
+        if ep + 1 - mejor_ep >= paciencia:
+            print(f"{nombre} seed {seed}: parada temprana en la época {ep+1} ({paciencia} épocas sin mejorar)", flush=True)
+            break
+    ep_hechas = len(hist)
+    s_ep = (time.time() - t0) / ep_hechas
     mem = torch.cuda.max_memory_allocated() / 1e9 if dev == "cuda" else float("nan")
-    print(f"{nombre} seed {seed}: mejor época {mejor_ep} (val F1 {mejor[0]:.3f}, val loss {-mejor[1]:.3f})", flush=True)
+    print(f"{nombre} seed {seed}: mejor época {mejor_ep} de {ep_hechas} (val F1 {mejor[0]:.3f}, val loss {-mejor[1]:.3f})", flush=True)
     m.load_state_dict(estado)
     P, Y = predecir(m, dl_te, dev)
-    return m, metricas(P, Y), hist, mejor_ep, s_ep, mem, (P, Y)
+    return m, metricas(P, Y), hist, mejor_ep, s_ep, mem, (P, Y), ep_hechas
 
 
 def reporte_por_clase(cm, archivo):
@@ -390,7 +395,8 @@ def main():
     ap.add_argument("--modelo", choices=list(MODELOS), required=True)
     ap.add_argument("--datos", default="medpoints_datos", help="carpeta con 0.parquet y 1.parquet (se descargan si faltan)")
     ap.add_argument("--puntos", type=int, default=2048)
-    ap.add_argument("--epocas", type=int, default=60)
+    ap.add_argument("--epocas", type=int, default=50)
+    ap.add_argument("--paciencia", type=int, default=10, help="épocas sin mejorar en validación antes de parar")
     ap.add_argument("--semillas", type=int, nargs="+", default=[0, 1, 2])
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--lr", type=float, default=1e-3)
@@ -406,10 +412,11 @@ def main():
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     filas, cms, hists = [], {}, {}
     for seed in a.semillas:
-        m, r, h, mejor_ep, s_ep, mem, (P, Y) = entrenar(a.modelo, X, y, part, a.puntos, a.epocas, a.lr, a.batch, seed, dev)
+        m, r, h, mejor_ep, s_ep, mem, (P, Y), ep_hechas = entrenar(a.modelo, X, y, part, a.puntos, a.epocas, a.lr, a.batch,
+                                                                    seed, dev, a.paciencia)
         fila = dict(modelo=a.modelo, puntos=a.puntos, seed=seed, acc=r["acc"], acc_balanceada=r["acc_balanceada"],
-                    f1_macro=r["f1_macro"], auc_ovr=r["auc_ovr"], mejor_epoca=mejor_ep, s_por_epoca=s_ep, mem_gpu_gb=mem,
-                    parametros=n_param(m))
+                    f1_macro=r["f1_macro"], auc_ovr=r["auc_ovr"], mejor_epoca=mejor_ep, epocas_entrenadas=ep_hechas,
+                    s_por_epoca=s_ep, mem_gpu_gb=mem, parametros=n_param(m))
         if seed == a.semillas[0]:
             (a_lo, a_hi), (f_lo, f_hi) = bootstrap(P, Y)
             fila.update(ic_acc_lo=a_lo, ic_acc_hi=a_hi, ic_f1_lo=f_lo, ic_f1_hi=f_hi)
