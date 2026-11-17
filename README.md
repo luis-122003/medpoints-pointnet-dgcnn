@@ -15,14 +15,26 @@ licencia MIT; 28.737 nubes de 2.048 puntos (x, y, z) en float32, derivadas de Me
 
 ## Resultados
 
-Los resultados del entrenamiento en Kaggle (GPU Tesla T4) se agregan en `resultados/` al terminar la corrida.
+Conjunto de prueba (5.744 nubes), media ± desviación de tres semillas, GPU Tesla T4 en Kaggle
+([MedPointS_Kaggle](https://www.kaggle.com/code/luismc15/medpoints-kaggle), versión 2):
+
+| Modelo | Exactitud | Exactitud balanceada | F1 macro | AUC OvR | Memoria GPU (GB) | s/época |
+|---|---|---|---|---|---|---|
+| PointNet (2.048 puntos) | 0,942 ± 0,001 | 0,918 ± 0,002 | 0,914 ± 0,002 | 0,998 ± 0,000 | 1,371 ± 0,016 | 36,7 ± 0,1 |
+| DGCNN (1.024 puntos) | 0,951 ± 0,002 | 0,929 ± 0,001 | 0,926 ± 0,002 | 0,999 ± 0,000 | 2,876 ± 0,009 | 169,6 ± 0,1 |
+
+DGCNN gana en las tres semillas, por 0,009 de exactitud, a cambio de 4,6 veces más tiempo por época. Líneas base publicadas en
+MedPointS (Zhang et al., MICCAI 2025; otra partición y una sola corrida): PointNet 0,936, PointNet++ 0,935, DGCNN 0,940,
+PCT 0,929, PointMamba 0,922. Ninguna corrida activó la parada temprana; las mejores épocas fueron 42, 43 y 48 (PointNet) y
+42, 47 y 49 (DGCNN). Los valores salen de `resultados/resultados.csv`.
 
 ## Contenido
 
 | Carpeta | Qué hay |
 |---|---|
 | `codigo/` | `medpoints_cls.py` (datos, PointNet, DGCNN, entrenamiento, métricas y figuras), `figuras_metodo.py` y `particion.npz` |
-| `notebooks/` | `MedPointS_Kaggle.ipynb`, el cuaderno que se ejecuta en Kaggle |
+| `notebooks/` | `MedPointS_Kaggle.ipynb`, el cuaderno que se ejecuta en Kaggle, y `MedPointS_Kaggle_ejecutado.ipynb`, con todas sus salidas |
+| `resultados/` | `resultados.csv`, métricas por clase, historiales, matrices de confusión, figuras, logs, entorno y los pesos `modelo_{pointnet,dgcnn}_seed{0,1,2}.pt` |
 | `figuras/` | Flujo de datos, arquitecturas, una nube por clase y distribución de clases |
 
 ## Reproducir

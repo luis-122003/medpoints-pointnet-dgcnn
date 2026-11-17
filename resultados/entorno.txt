@@ -1,0 +1,8 @@
+python 3.13.16
+torch 2.11.0+cu130
+cuda 13.0
+numpy 2.1.3
+scikit-learn 1.6.1
+gpu Tesla T4
+0.parquet 359529987 bytes sha256 9d4dacc388a7f3a6f8982a668d613f9a76c84ee710d102b415ad9235ba4d7b25
+1.parquet 359287769 bytes sha256 ada6796020756087b824f8c63f1aa4e3f61e94622caba3fc13369f98e23bf3cc
