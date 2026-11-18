@@ -1,4 +1,4 @@
-# Clasificación multiclase de estructuras anatómicas en nubes de puntos: PointNet frente a DGCNN sobre MedPointS
+# Clasificación multiclase de estructuras anatómicas usando PointNet y DGCNN con datos de nubes de puntos 3D
 
 Proyecto final de la Electiva de Ingeniería de Software (Universidad de San Buenaventura Cali).
 Autor: Luis Edwar Mosquera Congo.
